@@ -1,0 +1,1291 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PROJECT PROTOCOL-7 // INTERACTIVE CYBER VAULT</title>
+    <style>
+        :root {
+            --bg-dark: #020617;
+            --panel-bg: rgba(15, 23, 42, 0.88);
+            --border-glow: rgba(56, 189, 248, 0.35);
+            --cyan-neon: #38bdf8;
+            --cyan-glow: 0 0 15px rgba(56, 189, 248, 0.6);
+            --gold-neon: #fbbf24;
+            --gold-glow: 0 0 20px rgba(251, 191, 36, 0.6);
+            --green-neon: #22c55e;
+            --red-neon: #ef4444;
+            --yellow-neon: #eab308;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'JetBrains Mono', 'Segoe UI Mono', monospace;
+        }
+
+        body {
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px 16px;
+            overflow-x: hidden;
+            position: relative;
+        }
+
+        #matrixCanvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 0;
+            opacity: 0.18;
+            pointer-events: none;
+        }
+
+        .app-container {
+            position: relative;
+            z-index: 1;
+            width: 100%;
+            max-width: 1150px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        /* HEADER & RODADAS */
+        .top-header {
+            background: var(--panel-bg);
+            border: 1px solid var(--border-glow);
+            border-radius: 14px;
+            padding: 14px 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            backdrop-filter: blur(12px);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .brand-title {
+            font-size: 1rem;
+            font-weight: 800;
+            color: var(--cyan-neon);
+            letter-spacing: 2px;
+            text-shadow: var(--cyan-glow);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .brand-title::before {
+            content: '';
+            width: 10px;
+            height: 10px;
+            background: var(--cyan-neon);
+            box-shadow: var(--cyan-glow);
+            border-radius: 2px;
+        }
+
+        .rounds-tracker {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .round-badge {
+            background: rgba(2, 6, 23, 0.8);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.3s;
+        }
+
+        .round-badge.active {
+            border-color: var(--gold-neon);
+            color: var(--gold-neon);
+            box-shadow: var(--gold-glow);
+        }
+
+        .round-badge.completed {
+            border-color: var(--green-neon);
+            color: var(--green-neon);
+        }
+
+        .round-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #475569;
+        }
+
+        .round-badge.active .round-dot {
+            background: var(--gold-neon);
+            box-shadow: 0 0 8px var(--gold-neon);
+            animation: pulse 1.2s infinite;
+        }
+
+        .round-badge.completed .round-dot {
+            background: var(--green-neon);
+            box-shadow: 0 0 8px var(--green-neon);
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+
+        /* LAYOUT PRINCIPAL */
+        .main-grid {
+            display: grid;
+            grid-template-columns: 1fr 420px;
+            gap: 20px;
+        }
+
+        @media (max-width: 920px) {
+            .main-grid { grid-template-columns: 1fr; }
+        }
+
+        .card-panel {
+            background: var(--panel-bg);
+            border: 1px solid var(--border-glow);
+            border-radius: 20px;
+            padding: 24px;
+            backdrop-filter: blur(12px);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.7);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .panel-heading {
+            width: 100%;
+            font-size: 0.85rem;
+            color: var(--cyan-neon);
+            font-weight: 700;
+            letter-spacing: 1px;
+            margin-bottom: 16px;
+            display: flex;
+            justify-content: space-between;
+            border-bottom: 1px solid rgba(255,255,255,0.08);
+            padding-bottom: 8px;
+        }
+
+        .vault-core {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            background: radial-gradient(circle, #1e293b 0%, #020617 100%);
+            border: 3px solid #334155;
+            box-shadow: 0 0 20px rgba(0,0,0,0.8), inset 0 0 15px rgba(56, 189, 248, 0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            margin-bottom: 18px;
+            transition: all 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        .vault-core.unlocked {
+            border-color: var(--green-neon);
+            box-shadow: 0 0 35px rgba(34, 197, 94, 0.5);
+            transform: rotate(360deg) scale(1.1);
+        }
+
+        .slots-row {
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+            gap: 8px;
+            width: 100%;
+            max-width: 380px;
+            margin-bottom: 18px;
+        }
+
+        .slot-item {
+            height: 54px;
+            background: #020617;
+            border: 2px solid #1e293b;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            font-weight: 800;
+            color: var(--cyan-neon);
+            box-shadow: inset 0 2px 6px rgba(0,0,0,0.8);
+            transition: all 0.25s ease;
+        }
+
+        .slot-item.green {
+            background: rgba(34, 197, 94, 0.2);
+            border-color: var(--green-neon);
+            color: var(--green-neon);
+            box-shadow: 0 0 12px rgba(34, 197, 94, 0.4);
+        }
+
+        .slot-item.yellow {
+            background: rgba(234, 179, 8, 0.2);
+            border-color: var(--yellow-neon);
+            color: var(--yellow-neon);
+            box-shadow: 0 0 12px rgba(234, 179, 8, 0.4);
+        }
+
+        .slot-item.red {
+            background: rgba(239, 68, 68, 0.2);
+            border-color: var(--red-neon);
+            color: var(--red-neon);
+            box-shadow: 0 0 12px rgba(239, 68, 68, 0.4);
+        }
+
+        /* TECLADO */
+        .keypad-matrix {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            width: 100%;
+            max-width: 380px;
+        }
+
+        .key-btn {
+            background: rgba(30, 41, 59, 0.7);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            color: #fff;
+            padding: 13px 0;
+            border-radius: 10px;
+            font-size: 1.15rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+        }
+
+        .key-btn:hover {
+            background: rgba(56, 189, 248, 0.2);
+            border-color: var(--cyan-neon);
+            color: var(--cyan-neon);
+            transform: translateY(-2px);
+        }
+
+        .key-btn:active { transform: translateY(1px); }
+
+        .key-btn.btn-del {
+            background: rgba(234, 179, 8, 0.15);
+            border-color: rgba(234, 179, 8, 0.4);
+            color: var(--gold-neon);
+            font-size: 0.85rem;
+        }
+
+        .key-btn.btn-del:hover {
+            background: rgba(234, 179, 8, 0.3);
+            color: #fff;
+        }
+
+        .key-btn.btn-clear {
+            background: rgba(127, 29, 29, 0.4);
+            border-color: rgba(239, 68, 68, 0.4);
+            color: #fca5a5;
+            font-size: 0.8rem;
+        }
+
+        .key-btn.btn-clear:hover { background: rgba(239, 68, 68, 0.4); color: #fff; }
+
+        .key-btn.btn-submit {
+            background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+            border-color: var(--cyan-neon);
+            color: #fff;
+            grid-column: span 3;
+            font-size: 0.85rem;
+            letter-spacing: 1px;
+            padding: 12px 0;
+            margin-top: 2px;
+        }
+
+        .key-btn.btn-submit:hover {
+            background: linear-gradient(135deg, #38bdf8 0%, #0284c7 100%);
+            box-shadow: var(--cyan-glow);
+        }
+
+        /* DECODIFICADOR INTERATIVO */
+        .decoder-card {
+            width: 100%;
+            margin-top: 18px;
+            background: rgba(2, 6, 23, 0.75);
+            border: 1px solid var(--border-glow);
+            border-radius: 14px;
+            padding: 16px;
+        }
+
+        .decoder-title {
+            color: var(--gold-neon);
+            font-size: 0.8rem;
+            font-weight: 700;
+            margin-bottom: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .block-selector {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+
+        .block-tab {
+            flex: 1;
+            background: #0f172a;
+            border: 1px solid #334155;
+            color: var(--text-muted);
+            padding: 8px 4px;
+            border-radius: 8px;
+            font-size: 0.72rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .block-tab.active {
+            background: rgba(251, 191, 36, 0.15);
+            border-color: var(--gold-neon);
+            color: var(--gold-neon);
+            font-weight: 700;
+        }
+
+        .bit-toggles-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #090d16;
+            padding: 10px;
+            border-radius: 10px;
+            border: 1px solid #1e293b;
+            margin-bottom: 12px;
+        }
+
+        .bit-switch {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .bit-switch label {
+            font-size: 0.62rem;
+            color: var(--text-muted);
+        }
+
+        .bit-btn {
+            width: 30px;
+            height: 30px;
+            border-radius: 6px;
+            border: 1px solid #334155;
+            background: #1e293b;
+            color: #fff;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 0.85rem;
+        }
+
+        .bit-btn.active {
+            background: var(--cyan-neon);
+            color: #000;
+            border-color: var(--cyan-neon);
+            box-shadow: var(--cyan-glow);
+        }
+
+        .result-display-strip {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: rgba(30, 41, 59, 0.6);
+            padding: 10px 14px;
+            border-radius: 8px;
+            font-size: 0.78rem;
+        }
+
+        .result-val {
+            color: var(--green-neon);
+            font-weight: 800;
+            font-size: 1.1rem;
+            letter-spacing: 2px;
+        }
+
+        .sync-btn {
+            background: rgba(34, 197, 94, 0.2);
+            border: 1px solid var(--green-neon);
+            color: var(--green-neon);
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 0.72rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .sync-btn:hover {
+            background: var(--green-neon);
+            color: #000;
+        }
+
+        .history-panel {
+            width: 100%;
+            margin-top: 14px;
+            background: rgba(2, 6, 23, 0.6);
+            border: 1px solid rgba(255,255,255,0.05);
+            border-radius: 10px;
+            padding: 12px;
+            font-size: 0.75rem;
+        }
+
+        .history-list {
+            max-height: 85px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            margin-top: 8px;
+        }
+
+        .history-item {
+            display: flex;
+            gap: 5px;
+        }
+
+        .mini-chip {
+            width: 22px;
+            height: 22px;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 800;
+            font-size: 0.75rem;
+        }
+
+        .mini-chip.green { background: var(--green-neon); color: #000; }
+        .mini-chip.yellow { background: var(--yellow-neon); color: #000; }
+        .mini-chip.red { background: var(--red-neon); color: #fff; }
+
+        /* PAINEL IA */
+        .ai-panel {
+            background: var(--panel-bg);
+            border: 1px solid var(--border-glow);
+            border-radius: 20px;
+            display: flex;
+            flex-direction: column;
+            height: 680px;
+            backdrop-filter: blur(12px);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.7);
+            overflow: hidden;
+        }
+
+        .ai-header {
+            padding: 14px 18px;
+            background: rgba(2, 6, 23, 0.9);
+            border-bottom: 1px solid var(--border-glow);
+            color: var(--cyan-neon);
+            font-weight: 700;
+            font-size: 0.85rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .quick-actions-bar {
+            padding: 10px;
+            background: rgba(15, 23, 42, 0.6);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+
+        .action-chip {
+            background: rgba(30, 41, 59, 0.8);
+            border: 1px solid rgba(56, 189, 248, 0.3);
+            color: var(--cyan-neon);
+            padding: 5px 10px;
+            border-radius: 6px;
+            font-size: 0.72rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .action-chip:hover {
+            background: var(--cyan-neon);
+            color: #000;
+        }
+
+        .chat-logs {
+            flex: 1;
+            padding: 16px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            font-size: 0.82rem;
+        }
+
+        .chat-bubble {
+            padding: 10px 14px;
+            border-radius: 10px;
+            max-width: 88%;
+            line-height: 1.45;
+        }
+
+        .chat-bubble.ai {
+            background: rgba(3, 43, 69, 0.7);
+            border: 1px solid rgba(56, 189, 248, 0.3);
+            color: #f1f5f9;
+            align-self: flex-start;
+        }
+
+        .chat-bubble.user {
+            background: rgba(2, 132, 199, 0.8);
+            color: #fff;
+            align-self: flex-end;
+        }
+
+        .chat-input-row {
+            padding: 12px;
+            background: rgba(2, 6, 23, 0.9);
+            border-top: 1px solid rgba(255, 255, 255, 0.08);
+            display: flex;
+            gap: 8px;
+        }
+
+        .chat-input-row textarea {
+            flex: 1;
+            background: rgba(15, 23, 42, 0.8);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #fff;
+            padding: 8px 10px;
+            border-radius: 8px;
+            resize: none;
+            height: 44px;
+            font-size: 0.8rem;
+            outline: none;
+        }
+
+        .chat-input-row button {
+            background: var(--cyan-neon);
+            color: #000;
+            border: none;
+            padding: 0 16px;
+            border-radius: 8px;
+            font-weight: 700;
+            font-size: 0.8rem;
+            cursor: pointer;
+        }
+
+        /* MODAIS */
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100vw; height: 100vh;
+            background: rgba(2, 6, 23, 0.94);
+            backdrop-filter: blur(14px);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+            padding: 20px;
+        }
+
+        .modal-overlay.active { display: flex; }
+
+        .modal-box {
+            background: #0f172a;
+            border: 2px solid var(--gold-neon);
+            border-radius: 20px;
+            width: 100%;
+            max-width: 620px;
+            padding: 24px;
+            box-shadow: var(--gold-glow);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+        }
+
+        .modal-box h2 {
+            color: var(--gold-neon);
+            font-size: 1.3rem;
+            margin-bottom: 8px;
+        }
+
+        .modal-box p {
+            color: var(--text-muted);
+            font-size: 0.82rem;
+            margin-bottom: 16px;
+        }
+
+        .agent-input {
+            background: #020617;
+            border: 1px solid var(--gold-neon);
+            color: var(--gold-neon);
+            padding: 10px 16px;
+            border-radius: 8px;
+            font-size: 1rem;
+            text-align: center;
+            width: 80%;
+            margin-bottom: 16px;
+            outline: none;
+            letter-spacing: 1px;
+            font-weight: 700;
+        }
+
+        #certCanvas {
+            width: 100%;
+            max-width: 520px;
+            border-radius: 10px;
+            border: 1px solid #334155;
+            margin-bottom: 16px;
+        }
+
+        .action-btn {
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+            color: #000;
+            border: none;
+            padding: 12px 28px;
+            border-radius: 20px;
+            font-weight: 800;
+            font-size: 0.88rem;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(245, 158, 11, 0.3);
+            transition: all 0.2s;
+        }
+
+        .action-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(245, 158, 11, 0.5);
+        }
+    </style>
+</head>
+<body>
+
+    <canvas id="matrixCanvas"></canvas>
+
+    <div class="app-container">
+        <!-- HEADER COM RODADAS -->
+        <div class="top-header">
+            <div class="brand-title">PROTOCOL-7 // DESAFIO MULTI-RODADAS</div>
+            <div class="rounds-tracker">
+                <div class="round-badge active" id="badge-r1">
+                    <div class="round-dot"></div>
+                    <span>R1: OPERADOR</span>
+                </div>
+                <div class="round-badge" id="badge-r2">
+                    <div class="round-dot"></div>
+                    <span>R2: ESPECIALISTA</span>
+                </div>
+                <div class="round-badge" id="badge-r3">
+                    <div class="round-dot"></div>
+                    <span>R3: MESTRE</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="main-grid">
+            
+            <!-- PAINEL DO COFRE -->
+            <div class="card-panel">
+                <div class="panel-heading">
+                    <span id="roundTitleLabel">RODADA 1 de 3</span>
+                    <span style="color:var(--gold-neon);" id="roundMaskLabel">MÁSCARA: 0x1F</span>
+                </div>
+
+                <div class="vault-core" id="vaultCore">🔐</div>
+
+                <div class="slots-row">
+                    <div class="slot-item" id="slot-0">-</div>
+                    <div class="slot-item" id="slot-1">-</div>
+                    <div class="slot-item" id="slot-2">-</div>
+                    <div class="slot-item" id="slot-3">-</div>
+                    <div class="slot-item" id="slot-4">-</div>
+                    <div class="slot-item" id="slot-5">-</div>
+                </div>
+
+                <!-- TECLADO NUMÉRICO COM BOTAO DEL -->
+                <div class="keypad-matrix">
+                    <button class="key-btn" onclick="pressKey('1')">1</button>
+                    <button class="key-btn" onclick="pressKey('2')">2</button>
+                    <button class="key-btn" onclick="pressKey('3')">3</button>
+
+                    <button class="key-btn" onclick="pressKey('4')">4</button>
+                    <button class="key-btn" onclick="pressKey('5')">5</button>
+                    <button class="key-btn" onclick="pressKey('6')">6</button>
+
+                    <button class="key-btn" onclick="pressKey('7')">7</button>
+                    <button class="key-btn" onclick="pressKey('8')">8</button>
+                    <button class="key-btn" onclick="pressKey('9')">9</button>
+
+                    <button class="key-btn btn-del" onclick="deleteSingleDigit()">DEL ⌫</button>
+                    <button class="key-btn" onclick="pressKey('0')">0</button>
+                    <button class="key-btn btn-clear" onclick="clearKeys()">LIMPAR</button>
+
+                    <button class="key-btn btn-submit" onclick="submitPasscode()">TESTAR SENHA</button>
+                </div>
+
+                <!-- DECODIFICADOR BITS -->
+                <div class="decoder-card">
+                    <div class="decoder-title">
+                        <span>⚡ DECODIFICADOR INTERATIVO (XOR)</span>
+                        <span style="color:var(--cyan-neon);" id="bitMaskDisplay">0x1F</span>
+                    </div>
+
+                    <div class="block-selector" id="blockTabsRow"></div>
+
+                    <div class="bit-toggles-row">
+                        <div class="bit-switch"><label>BIT 7</label><button class="bit-btn" id="bit-7" onclick="toggleBit(7)">0</button></div>
+                        <div class="bit-switch"><label>BIT 6</label><button class="bit-btn" id="bit-6" onclick="toggleBit(6)">0</button></div>
+                        <div class="bit-switch"><label>BIT 5</label><button class="bit-btn" id="bit-5" onclick="toggleBit(5)">0</button></div>
+                        <div class="bit-switch"><label>BIT 4</label><button class="bit-btn" id="bit-4" onclick="toggleBit(4)">0</button></div>
+                        <div class="bit-switch"><label>BIT 3</label><button class="bit-btn" id="bit-3" onclick="toggleBit(3)">0</button></div>
+                        <div class="bit-switch"><label>BIT 2</label><button class="bit-btn" id="bit-2" onclick="toggleBit(2)">0</button></div>
+                        <div class="bit-switch"><label>BIT 1</label><button class="bit-btn" id="bit-1" onclick="toggleBit(1)">0</button></div>
+                        <div class="bit-switch"><label>BIT 0</label><button class="bit-btn" id="bit-0" onclick="toggleBit(0)">0</button></div>
+                    </div>
+
+                    <div class="result-display-strip">
+                        <div>
+                            <span>DÍGITOS REVELADOS:</span>
+                            <span class="result-val" id="decodedPairVal">--</span>
+                        </div>
+                        <button class="sync-btn" onclick="transferDecodedDigits()">INSERIR NO COFRE</button>
+                    </div>
+                </div>
+
+                <!-- HISTÓRICO DE TENTATIVAS -->
+                <div class="history-panel">
+                    <div style="display:flex; justify-content:space-between; color:var(--cyan-neon); font-weight:700;">
+                        <span>HISTÓRICO DA RODADA</span>
+                        <span>FEEDBACK</span>
+                    </div>
+                    <div class="history-list" id="historyLog">
+                        <div style="color:var(--text-muted); font-size:0.7rem;">Nenhuma tentativa nesta rodada</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- PAINEL DA IA -->
+            <div class="ai-panel">
+                <div class="ai-header">🤖 ASSISTENTE DE DECODIFICAÇÃO PROTOCOL-7</div>
+
+                <div class="quick-actions-bar">
+                    <div class="action-chip" onclick="triggerAiHelp('Como funciona a rodada atual?')">Rodada Atual</div>
+                    <div class="action-chip" onclick="triggerAiHelp('O que o botão DEL faz?')">Botão DEL</div>
+                    <div class="action-chip" onclick="triggerAiHelp('O que significam as cores?')">Cores</div>
+                </div>
+
+                <div class="chat-logs" id="chatLogs">
+                    <div class="chat-bubble ai">
+                        <b>[SISTEMA DE SEGURANÇA ATIVO]</b><br>
+                        Você possui 3 rodadas com senhas e máscaras XOR diferentes!<br><br>
+                        • Use o botão <b>"DEL ⌫"</b> para apagar 1 dígito por vez.<br>
+                        • Alterne os blocos no decodificador e insira os pares revelados no cofre.
+                    </div>
+                </div>
+
+                <div class="chat-input-row">
+                    <textarea id="aiText" placeholder="Digite uma dúvida..." onkeydown="handleAiKey(event)"></textarea>
+                    <button onclick="sendAiPrompt()">ENVIAR</button>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- MODAL DE TRANSIÇÃO ENTRE RODADAS -->
+    <div class="modal-overlay" id="modalNextRound">
+        <div class="modal-box">
+            <h2 id="nextRoundTitle">🏆 RODADA CONCLUÍDA!</h2>
+            <p id="nextRoundDesc">Você abriu o cofre da rodada atual com sucesso.</p>
+            <button class="action-btn" onclick="startNextRound()">AVANÇAR PARA A PRÓXIMA RODADA ➔</button>
+        </div>
+    </div>
+
+    <!-- MODAL DO CERTIFICADO FINAL -->
+    <div class="modal-overlay" id="modalCertificate">
+        <div class="modal-box">
+            <h2>🏆 PROTOCOLO CONCLUÍDO COM SUCESSO!</h2>
+            <p>Insira seu codinome para gerar o Certificado Oficial de Mestre Cyber:</p>
+
+            <input type="text" class="agent-input" id="agentInput" value="AGENTE_CYBER" oninput="renderCert()" placeholder="Insira seu Codinome">
+
+            <canvas id="certCanvas" width="1200" height="750"></canvas>
+
+            <button class="action-btn" onclick="downloadCert()">💾 BAIXAR CERTIFICADO PNG</button>
+        </div>
+    </div>
+
+    <script>
+        // CONFIGURAÇÃO DAS 3 RODADAS
+        const GAME_ROUNDS = [
+            {
+                roundNum: 1,
+                name: "R1: OPERADOR",
+                passcode: "749302",
+                maskHex: 0x1F, // 31
+                blocks: [
+                    { name: "BLOCO 1", addr: "0x0040A0", hexByte: 0x2E }, // 0x2E ^ 0x1F = 74
+                    { name: "BLOCO 2", addr: "0x0040A4", hexByte: 0x3D }, // 0x3D ^ 0x1F = 93
+                    { name: "BLOCO 3", addr: "0x0040A8", hexByte: 0x48 }  // 0x48 ^ 0x1F = 02
+                ]
+            },
+            {
+                roundNum: 2,
+                name: "R2: ESPECIALISTA",
+                passcode: "581489",
+                maskHex: 0x2D, // 45
+                blocks: [
+                    { name: "BLOCO 1", addr: "0x0051B0", hexByte: 0x47 }, // 0x47 ^ 0x2D = 58
+                    { name: "BLOCO 2", addr: "0x0051B4", hexByte: 0x39 }, // 0x39 ^ 0x2D = 14
+                    { name: "BLOCO 3", addr: "0x0051B8", hexByte: 0x64 }  // 0x64 ^ 0x2D = 89
+                ]
+            },
+            {
+                roundNum: 3,
+                name: "R3: MESTRE CYBER",
+                passcode: "813667",
+                maskHex: 0x3A, // 58
+                blocks: [
+                    { name: "BLOCO 1", addr: "0x0062C0", hexByte: 0x73 }, // 0x73 ^ 0x3A = 81
+                    { name: "BLOCO 2", addr: "0x0062C4", hexByte: 0x6C }, // 0x6C ^ 0x3A = 36
+                    { name: "BLOCO 3", addr: "0x0062C8", hexByte: 0x5D }  // 0x5D ^ 0x3A = 67
+                ]
+            }
+        ];
+
+        let currentRoundIdx = 0;
+        let activeBlockIdx = 0;
+        let maskBits = [0,0,0,0,0,0,0,0];
+        let pinInput = "";
+        let isLock = false;
+        let attemptsCount = 0;
+
+        // MATRIX BACKGROUND
+        const canvas = document.getElementById('matrixCanvas');
+        const ctx = canvas.getContext('2d');
+        function resizeCanvas() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
+        resizeCanvas();
+        window.addEventListener('resize', resizeCanvas);
+
+        const matrixChars = '0110100101XOR40A0PROTOCOL7DEL';
+        const fontSize = 14;
+        const columns = Math.floor(canvas.width / fontSize);
+        const drops = new Array(columns).fill(1);
+
+        function drawMatrix() {
+            ctx.fillStyle = 'rgba(2, 6, 23, 0.08)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = '#38bdf8';
+            ctx.font = `${fontSize}px monospace`;
+            for (let i = 0; i < drops.length; i++) {
+                const text = matrixChars.charAt(Math.floor(Math.random() * matrixChars.length));
+                ctx.fillText(text, i * fontSize, drops[i] * fontSize);
+                if (drops[i] * fontSize > canvas.height && Math.random() > 0.975) drops[i] = 0;
+                drops[i]++;
+            }
+        }
+        setInterval(drawMatrix, 33);
+
+        // SOM
+        let audioCtx = null;
+        function playSound(freq, duration = 0.08, type = 'sine') {
+            try {
+                if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                if (audioCtx.state === 'suspended') audioCtx.resume();
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = type;
+                osc.frequency.value = freq;
+                gain.gain.setValueAtTime(0.05, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + duration);
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start();
+                osc.stop(audioCtx.currentTime + duration);
+            } catch(e) {}
+        }
+
+        // CARREGAR RODADA
+        function loadRound(idx) {
+            currentRoundIdx = idx;
+            const rData = GAME_ROUNDS[idx];
+
+            document.getElementById('roundTitleLabel').innerText = `RODADA ${rData.roundNum} DE 3 - ${rData.name}`;
+            document.getElementById('roundMaskLabel').innerText = `MÁSCARA: 0x${rData.maskHex.toString(16).toUpperCase()}`;
+            document.getElementById('bitMaskDisplay').innerText = `0x${rData.maskHex.toString(16).toUpperCase()}`;
+
+            // Atualiza Badges do Header
+            for (let i = 0; i < 3; i++) {
+                const b = document.getElementById(`badge-r${i+1}`);
+                b.className = 'round-badge';
+                if (i < idx) b.classList.add('completed');
+                else if (i === idx) b.classList.add('active');
+            }
+
+            // Converter máscara em bits para os botões do decodificador
+            const maskBin = rData.maskHex.toString(2).padStart(8, '0');
+            maskBits = maskBin.split('').map(Number);
+            for (let bit = 0; bit < 8; bit++) {
+                const btn = document.getElementById(`bit-${bit}`);
+                const val = maskBits[7 - bit];
+                btn.innerText = val;
+                btn.classList.toggle('active', val === 1);
+            }
+
+            // Renderizar Abas de Bloco
+            const tabsRow = document.getElementById('blockTabsRow');
+            tabsRow.innerHTML = '';
+            rData.blocks.forEach((blk, bIdx) => {
+                const tab = document.createElement('div');
+                tab.className = `block-tab ${bIdx === 0 ? 'active' : ''}`;
+                tab.id = `tab-${bIdx}`;
+                tab.onclick = () => selectBlock(bIdx);
+                tab.innerHTML = `${blk.name}<br><small>${blk.addr}</small>`;
+                tabsRow.appendChild(tab);
+            });
+
+            activeBlockIdx = 0;
+            pinInput = "";
+            isLock = false;
+            attemptsCount = 0;
+            document.getElementById('historyLog').innerHTML = '<div style="color:var(--text-muted); font-size:0.7rem;">Nenhuma tentativa nesta rodada</div>';
+            document.getElementById('vaultCore').classList.remove('unlocked');
+            document.getElementById('vaultCore').innerText = '🔐';
+
+            renderSlots();
+            updateDecoderOutput();
+        }
+
+        // TECLADO & DELETAR DÍGITO
+        function pressKey(num) {
+            if (isLock || pinInput.length >= 6) return;
+            playSound(500, 0.06);
+            pinInput += num;
+            renderSlots();
+        }
+
+        function deleteSingleDigit() {
+            if (isLock || pinInput.length === 0) return;
+            playSound(320, 0.06, 'triangle');
+            pinInput = pinInput.slice(0, -1);
+            renderSlots();
+        }
+
+        function clearKeys() {
+            if (isLock) return;
+            playSound(250, 0.08, 'sawtooth');
+            pinInput = "";
+            renderSlots();
+        }
+
+        function renderSlots() {
+            for (let i = 0; i < 6; i++) {
+                const el = document.getElementById(`slot-${i}`);
+                if (i < pinInput.length) {
+                    el.innerText = pinInput[i];
+                } else {
+                    el.innerText = "-";
+                }
+                el.className = "slot-item";
+            }
+        }
+
+        // DECODIFICADOR BITS
+        function selectBlock(idx) {
+            playSound(600, 0.05);
+            activeBlockIdx = idx;
+            for (let i = 0; i < 3; i++) {
+                const tab = document.getElementById(`tab-${i}`);
+                if (tab) tab.classList.toggle('active', i === idx);
+            }
+            updateDecoderOutput();
+        }
+
+        function toggleBit(bitPos) {
+            playSound(750, 0.05);
+            maskBits[7 - bitPos] = maskBits[7 - bitPos] === 1 ? 0 : 1;
+            const btn = document.getElementById(`bit-${bitPos}`);
+            btn.innerText = maskBits[7 - bitPos];
+            btn.classList.toggle('active', maskBits[7 - bitPos] === 1);
+            updateDecoderOutput();
+        }
+
+        function getMaskValue() { return parseInt(maskBits.join(''), 2); }
+
+        function updateDecoderOutput() {
+            const currentData = GAME_ROUNDS[currentRoundIdx];
+            const rawByte = currentData.blocks[activeBlockIdx].hexByte;
+            const maskVal = getMaskValue();
+            const xorResult = rawByte ^ maskVal;
+            const formatted = xorResult < 10 ? `0${xorResult}` : `${xorResult}`;
+            document.getElementById('decodedPairVal').innerText = formatted;
+        }
+
+        function transferDecodedDigits() {
+            if (isLock || pinInput.length >= 6) return;
+            playSound(850, 0.1);
+            const val = document.getElementById('decodedPairVal').innerText;
+            for (let char of val) {
+                if (pinInput.length < 6) pinInput += char;
+            }
+            renderSlots();
+        }
+
+        // SUBMIT & AVALIAÇÃO
+        function evaluatePasscode(guess, secret) {
+            const result = new Array(6).fill('red');
+            const secretArr = secret.split('');
+            const guessArr = guess.split('');
+            const counts = {};
+
+            for (let char of secretArr) counts[char] = (counts[char] || 0) + 1;
+            for (let i = 0; i < 6; i++) {
+                if (guessArr[i] === secretArr[i]) {
+                    result[i] = 'green';
+                    counts[guessArr[i]]--;
+                }
+            }
+            for (let i = 0; i < 6; i++) {
+                if (result[i] !== 'green') {
+                    const char = guessArr[i];
+                    if (counts[char] && counts[char] > 0) {
+                        result[i] = 'yellow';
+                        counts[char]--;
+                    }
+                }
+            }
+            return result;
+        }
+
+        function submitPasscode() {
+            if (isLock || pinInput.length < 6) {
+                if (pinInput.length < 6) playSound(180, 0.15, 'sawtooth');
+                return;
+            }
+
+            isLock = true;
+            const targetPass = GAME_ROUNDS[currentRoundIdx].passcode;
+            const evalColors = evaluatePasscode(pinInput, targetPass);
+            const isCorrect = (pinInput === targetPass);
+
+            evalColors.forEach((color, idx) => {
+                setTimeout(() => {
+                    const slot = document.getElementById(`slot-${idx}`);
+                    slot.className = `slot-item ${color}`;
+                    playSound(color === 'green' ? 800 : (color === 'yellow' ? 480 : 220), 0.08);
+                }, idx * 100);
+            });
+
+            setTimeout(() => {
+                addHistory(pinInput, evalColors);
+
+                if (isCorrect) {
+                    playSound(880, 0.4);
+                    document.getElementById('vaultCore').classList.add('unlocked');
+                    document.getElementById('vaultCore').innerText = '🔓';
+
+                    setTimeout(() => {
+                        if (currentRoundIdx < 2) {
+                            openNextRoundModal();
+                        } else {
+                            openCertModal();
+                        }
+                    }, 1000);
+                } else {
+                    playSound(140, 0.2, 'sawtooth');
+                    setTimeout(() => { isLock = false; }, 400);
+                }
+            }, 6 * 100 + 100);
+        }
+
+        function addHistory(pinStr, colorsArr) {
+            const historyLog = document.getElementById('historyLog');
+            if (attemptsCount === 0) historyLog.innerHTML = '';
+            attemptsCount++;
+
+            const row = document.createElement('div');
+            row.className = 'history-item';
+            for (let i = 0; i < 6; i++) {
+                const chip = document.createElement('div');
+                chip.className = `mini-chip ${colorsArr[i]}`;
+                chip.innerText = pinStr[i];
+                row.appendChild(chip);
+            }
+            historyLog.prepend(row);
+        }
+
+        // TRANSIÇÃO DE RODADAS
+        function openNextRoundModal() {
+            document.getElementById('nextRoundTitle').innerText = `🏆 RODADA ${currentRoundIdx + 1} CONCLUÍDA!`;
+            document.getElementById('nextRoundDesc').innerText = `Você dominou a ${GAME_ROUNDS[currentRoundIdx].name}. Prépare-se para o próximo nível criptográfico.`;
+            document.getElementById('modalNextRound').classList.add('active');
+        }
+
+        function startNextRound() {
+            document.getElementById('modalNextRound').classList.remove('active');
+            loadRound(currentRoundIdx + 1);
+        }
+
+        // CHAT IA
+        function triggerAiHelp(text) {
+            playSound(650, 0.04);
+            document.getElementById('aiText').value = text;
+            sendAiPrompt();
+        }
+
+        function handleAiKey(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendAiPrompt();
+            }
+        }
+
+        function sendAiPrompt() {
+            const input = document.getElementById('aiText');
+            const query = input.value.trim();
+            if (!query) return;
+            addBubble(query, 'user');
+            input.value = '';
+            setTimeout(() => {
+                addBubble(respondAi(query), 'ai');
+            }, 350);
+        }
+
+        function addBubble(text, type) {
+            const logs = document.getElementById('chatLogs');
+            const bubble = document.createElement('div');
+            bubble.className = `chat-bubble ${type}`;
+            bubble.innerHTML = text;
+            logs.appendChild(bubble);
+            logs.scrollTop = logs.scrollHeight;
+        }
+
+        function respondAi(query) {
+            const q = query.toLowerCase();
+
+            if (q.includes('del') || q.includes('deletar') || q.includes('apagar')) {
+                return "<b>Botão DEL ⌫:</b><br>O botão DEL apaga apenas o último dígito inserido na tela, sem alterar as cores do seu histórico de tentativas ou o decodificador de bits.";
+            }
+            if (q.includes('rodada')) {
+                const r = GAME_ROUNDS[currentRoundIdx];
+                return `<b>Status da Rodada Atual (${r.name}):</b><br>` +
+                       `• Máscara Padrão: <code>0x${r.maskHex.toString(16).toUpperCase()}</code><br>` +
+                       `• Decodifique os 3 blocos para obter os 6 dígitos da senha desta fase!`;
+            }
+            if (q.includes('cores')) {
+                return "🟢 <b>Verde</b>: Número e Posição exatos.<br>" +
+                       "🟡 <b>Amarelo</b>: O número existe, mas em outra posição.<br>" +
+                       "🔴 <b>Vermelho</b>: O número não pertence à senha da rodada.";
+            }
+
+            return "Alterne entre os blocos no painel interativo de bits para revelar a combinação do cofre atual!";
+        }
+
+        // CERTIFICADO CANVAS
+        function openCertModal() {
+            document.getElementById('modalCertificate').classList.add('active');
+            renderCert();
+        }
+
+        function renderCert() {
+            const canvas = document.getElementById('certCanvas');
+            const ctx = canvas.getContext('2d');
+            const name = document.getElementById('agentInput').value || 'AGENTE_CYBER';
+
+            ctx.fillStyle = '#020617';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Borda Externa Dourada
+            ctx.strokeStyle = '#fbbf24';
+            ctx.lineWidth = 12;
+            ctx.strokeRect(24, 24, canvas.width - 48, canvas.height - 48);
+
+            // Borda Interna Cyan
+            ctx.strokeStyle = '#38bdf8';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(40, 40, canvas.width - 80, canvas.height - 80);
+
+            // Título
+            ctx.fillStyle = '#fbbf24';
+            ctx.font = 'bold 44px monospace';
+            ctx.textAlign = 'center';
+            ctx.fillText('CERTIFICADO DE MESTRE CYBER', canvas.width / 2, 120);
+
+            ctx.fillStyle = '#94a3b8';
+            ctx.font = '20px monospace';
+            ctx.fillText('PROTOCOLO PROTOCOL-7 // CONCLUÍDO COM EXCELÊNCIA', canvas.width / 2, 165);
+
+            ctx.strokeStyle = '#334155';
+            ctx.beginPath();
+            ctx.moveTo(120, 195);
+            ctx.lineTo(canvas.width - 120, 195);
+            ctx.stroke();
+
+            ctx.fillStyle = '#f8fafc';
+            ctx.font = '24px sans-serif';
+            ctx.fillText('Certificamos que o operador:', canvas.width / 2, 260);
+
+            ctx.fillStyle = '#38bdf8';
+            ctx.font = 'bold 50px monospace';
+            ctx.fillText(name.toUpperCase(), canvas.width / 2, 330);
+
+            ctx.fillStyle = '#cbd5e1';
+            ctx.font = '20px sans-serif';
+            ctx.fillText('Decodificou com sucesso todas as 3 rodadas criptográficas (XOR),', canvas.width / 2, 400);
+            ctx.fillText('superando os níveis Operador, Especialista e Mestre Cyber.', canvas.width / 2, 435);
+
+            // Badges das Rodadas Concluídas
+            const badgeY = 530;
+            const badgeWidth = 240;
+            const badgeGap = 40;
+            const startX = (canvas.width - (3 * badgeWidth + 2 * badgeGap)) / 2;
+
+            GAME_ROUNDS.forEach((r, idx) => {
+                const bx = startX + idx * (badgeWidth + badgeGap);
+                ctx.fillStyle = 'rgba(34, 197, 94, 0.15)';
+                ctx.strokeStyle = '#22c55e';
+                ctx.lineWidth = 2;
+                ctx.fillRect(bx, badgeY, badgeWidth, 60);
+                ctx.strokeRect(bx, badgeY, badgeWidth, 60);
+
+                ctx.fillStyle = '#22c55e';
+                ctx.font = 'bold 16px monospace';
+                ctx.fillText(`✔ ${r.name}`, bx + badgeWidth / 2, badgeY + 36);
+            });
+
+            // Rodapé / Hash
+            ctx.fillStyle = '#fbbf24';
+            ctx.font = '16px monospace';
+            ctx.fillText(`HASH OFICIAL: [R1:749302 // R2:581489 // R3:813667]`, canvas.width / 2, 660);
+        }
+
+        function downloadCert() {
+            const canvas = document.getElementById('certCanvas');
+            const link = document.createElement('a');
+            link.download = 'Certificado_Mestre_Cyber_Protocol7.png';
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+        }
+
+        // INICIALIZAR JOGO NA RODADA 1
+        loadRound(0);
+    </script>
+</body>
+</html>
